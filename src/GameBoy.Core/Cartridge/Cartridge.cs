@@ -53,6 +53,28 @@ namespace GameBoy.Cartridge
 
         public void AdvanceRtc(long seconds) => rtc?.AddSeconds(seconds);
 
+        public byte[] SaveBattery(long unixSeconds)
+        {
+            using var stream = new MemoryStream();
+            using var writer = new BinaryWriter(stream);
+            writer.Write(Ram);
+            rtc?.WriteBatteryFooter(writer, unixSeconds);
+            writer.Flush();
+            return stream.ToArray();
+        }
+
+        public void LoadBattery(byte[] contents, long unixSeconds)
+        {
+            Array.Copy(contents, 0, Ram, 0, Math.Min(contents.Length, Ram.Length));
+
+            int footerLength = contents.Length - Ram.Length;
+            if (rtc == null || (footerLength != Mbc3Rtc.BatteryFooterLength && footerLength != Mbc3Rtc.BatteryFooterLength - 4))
+                return;
+
+            using var reader = new BinaryReader(new MemoryStream(contents, Ram.Length, footerLength));
+            rtc.ReadBatteryFooter(reader, unixSeconds);
+        }
+
         public void SaveState(BinaryWriter writer)
         {
             writer.Write(Ram.Length);

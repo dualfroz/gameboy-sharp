@@ -26,6 +26,10 @@ namespace GameBoy
             Array.Copy(contents, 0, Cartridge.Ram, 0, Math.Min(contents.Length, Cartridge.Ram.Length));
         }
 
+        public byte[] SaveBattery(long unixSeconds) => Cartridge.SaveBattery(unixSeconds);
+
+        public void LoadBattery(byte[] contents, long unixSeconds) => Cartridge.LoadBattery(contents, unixSeconds);
+
         public byte[] SaveState()
         {
             using var stream = new MemoryStream();
