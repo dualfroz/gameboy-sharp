@@ -133,5 +133,49 @@ namespace GameBoy.Tests
             Latch(emulator);
             Assert.Equal(3, ReadLatched(emulator, 0x08));
         }
+
+        [Fact]
+        public void BatterySaveCarriesTheClockAndWallTimeSinceExit()
+        {
+            const long savedAt = 1_700_000_000;
+            var source = NewTimerCartridge();
+            EnableRtc(source);
+            WriteRtc(source, 0x08, 50);
+            WriteRtc(source, 0x09, 59);
+            WriteRtc(source, 0x0A, 23);
+            WriteRtc(source, 0x0B, 4);
+            SelectRtcRegister(source, 0x00);
+            source.WriteMemory(0xA123, 0x77);
+
+            byte[] battery = source.SaveBattery(savedAt);
+            Assert.Equal(4 * 0x2000 + 48, battery.Length);
+
+            var loaded = NewTimerCartridge();
+            loaded.LoadBattery(battery, savedAt + 15);
+            EnableRtc(loaded);
+            Latch(loaded);
+
+            Assert.Equal(5, ReadLatched(loaded, 0x08));
+            Assert.Equal(0, ReadLatched(loaded, 0x09));
+            Assert.Equal(0, ReadLatched(loaded, 0x0A));
+            Assert.Equal(5, ReadLatched(loaded, 0x0B));
+            SelectRtcRegister(loaded, 0x00);
+            Assert.Equal(0x77, loaded.ReadMemory(0xA123));
+        }
+
+        [Fact]
+        public void BatterySaveWithoutClockFooterLeavesClockUntouched()
+        {
+            var source = NewTimerCartridge();
+            EnableRtc(source);
+            WriteRtc(source, 0x08, 42);
+
+            var loaded = NewTimerCartridge();
+            loaded.LoadBattery(source.SaveRam(), 1_700_000_000);
+            EnableRtc(loaded);
+            Latch(loaded);
+
+            Assert.Equal(0, ReadLatched(loaded, 0x08));
+        }
     }
 }
